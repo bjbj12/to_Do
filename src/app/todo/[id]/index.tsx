@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { StatusBadge, StatusPicker } from '@/components/status';
 import { confirmDestructive, showError } from '@/confirm';
+import { goBackOrReplace } from '@/navigation';
 import { useTodos } from '@/todos';
 
 export default function TodoDetailScreen() {
@@ -46,7 +47,7 @@ export default function TodoDetailScreen() {
           onPress={() =>
             confirmDestructive('Delete todo?', todo.title, () => {
               void deleteTodo(todo.id)
-                .then(() => router.back())
+                .then(() => goBackOrReplace('/'))
                 .catch(showError);
             })
           }

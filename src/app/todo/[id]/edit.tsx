@@ -1,7 +1,8 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { StyleSheet, Text } from 'react-native';
 
 import { TodoForm } from '@/components/TodoForm';
+import { goBackOrReplace } from '@/navigation';
 import { useTodos } from '@/todos';
 
 export default function EditTodoScreen() {
@@ -19,7 +20,7 @@ export default function EditTodoScreen() {
       submitLabel="Save changes"
       onSubmit={async (input) => {
         await updateTodo(todo.id, input);
-        router.back();
+        goBackOrReplace({ pathname: '/todo/[id]', params: { id: todo.id } });
       }}
     />
   );

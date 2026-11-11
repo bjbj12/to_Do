@@ -1,6 +1,5 @@
-import { router } from 'expo-router';
-
 import { TodoForm } from '@/components/TodoForm';
+import { goBackOrReplace } from '@/navigation';
 import { useTodos } from '@/todos';
 
 export default function NewTodoScreen() {
@@ -11,7 +10,7 @@ export default function NewTodoScreen() {
       submitLabel="Create todo"
       onSubmit={async (input) => {
         await createTodo(input);
-        router.back();
+        goBackOrReplace('/');
       }}
     />
   );
