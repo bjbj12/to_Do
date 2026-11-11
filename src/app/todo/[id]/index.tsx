@@ -2,15 +2,16 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { StatusBadge, StatusPicker } from '@/components/status';
-import { confirmDestructive } from '@/confirm';
+import { confirmDestructive, showError } from '@/confirm';
 import { useTodos } from '@/todos';
 
 export default function TodoDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const { getTodo, updateTodo, deleteTodo } = useTodos();
-  const todo = getTodo(id);
+  const todoId = Array.isArray(id) ? id[0] : id;
+  const todo = getTodo(todoId);
 
-  if (!todo) return <Text style={styles.missing}>Todo not found.</Text>;
+  if (!todoId || !todo) return <Text style={styles.missing}>Todo not found.</Text>;
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -27,7 +28,10 @@ export default function TodoDetailScreen() {
       </View>
 
       <Text style={styles.label}>Status</Text>
-      <StatusPicker value={todo.status} onChange={(status) => updateTodo(todo.id, { status })} />
+      <StatusPicker
+        value={todo.status}
+        onChange={(status) => void updateTodo(todo.id, { status }).catch(showError)}
+      />
 
       <View style={styles.actions}>
         <Pressable
@@ -41,8 +45,9 @@ export default function TodoDetailScreen() {
           accessibilityRole="button"
           onPress={() =>
             confirmDestructive('Delete todo?', todo.title, () => {
-              deleteTodo(todo.id);
-              router.back();
+              void deleteTodo(todo.id)
+                .then(() => router.back())
+                .catch(showError);
             })
           }
           style={[styles.button, styles.delete]}

@@ -4,12 +4,12 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAuth } from '@/auth';
 import { StatusBadge, StatusPicker } from '@/components/status';
-import { confirmDestructive } from '@/confirm';
+import { confirmDestructive, showError } from '@/confirm';
 import { STATUSES, STATUS_LABELS, useTodos, type TodoStatus } from '@/todos';
 
 export default function TodoListScreen() {
   const { user, signOut } = useAuth();
-  const { todos, updateTodo, deleteTodo } = useTodos();
+  const { todos, error, refreshTodos, updateTodo, deleteTodo } = useTodos();
   const [filter, setFilter] = useState<TodoStatus | null>(null);
 
   const visible = filter ? todos.filter((t) => t.status === filter) : todos;
@@ -19,15 +19,31 @@ export default function TodoListScreen() {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <Pressable accessibilityRole="button" onPress={signOut} hitSlop={8}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => void signOut().catch(showError)}
+              hitSlop={8}
+            >
               <Text style={styles.headerAction}>Log out</Text>
             </Pressable>
           ),
         }}
       />
 
+      {error ? (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorText}>Could not load todos: {error}</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => void refreshTodos().catch(showError)}
+          >
+            <Text style={styles.retry}>Retry</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
       <View style={styles.toolbar}>
-        <Text style={styles.greeting}>Hi, {user}</Text>
+        <Text style={styles.greeting}>Hi, {user?.email ?? 'there'}</Text>
         <StatusPicker
           value={filter}
           onChange={(s) => setFilter((current) => (current === s ? null : s))}
@@ -66,7 +82,7 @@ export default function TodoListScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`Change status to ${STATUS_LABELS[next]}`}
-                onPress={() => updateTodo(item.id, { status: next })}
+                onPress={() => void updateTodo(item.id, { status: next }).catch(showError)}
                 hitSlop={6}
               >
                 <StatusBadge status={item.status} />
@@ -75,7 +91,9 @@ export default function TodoListScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Delete todo"
                 onPress={() =>
-                  confirmDestructive('Delete todo?', item.title, () => deleteTodo(item.id))
+                  confirmDestructive('Delete todo?', item.title, () => {
+                    void deleteTodo(item.id).catch(showError);
+                  })
                 }
                 hitSlop={6}
               >
@@ -105,6 +123,16 @@ const styles = StyleSheet.create({
   greeting: { fontSize: 18, fontWeight: '700', color: '#0f172a' },
   list: { paddingHorizontal: 16, paddingBottom: 96, gap: 8 },
   empty: { textAlign: 'center', color: '#64748b', marginTop: 48 },
+  errorBanner: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: '#fee2e2',
+    gap: 8,
+  },
+  errorText: { color: '#991b1b' },
+  retry: { color: '#1d4ed8', fontWeight: '700' },
   item: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -7,15 +7,31 @@ import type { TodoInput } from '@/todos';
 type Props = {
   initial?: TodoInput;
   submitLabel: string;
-  onSubmit: (input: TodoInput) => void;
+  onSubmit: (input: TodoInput) => void | Promise<void>;
 };
 
 export function TodoForm({ initial, submitLabel, onSubmit }: Props) {
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [status, setStatus] = useState(initial?.status ?? 'todo');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const canSubmit = title.trim().length > 0;
+  const submit = async () => {
+    if (!canSubmit || isSubmitting) return;
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      await onSubmit({ title: title.trim(), description: description.trim(), status });
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error ? submitError.message : 'Unable to save this todo.',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
@@ -40,13 +56,16 @@ export function TodoForm({ initial, submitLabel, onSubmit }: Props) {
       <Text style={styles.label}>Status</Text>
       <StatusPicker value={status} onChange={setStatus} />
 
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+
       <Pressable
         accessibilityRole="button"
-        disabled={!canSubmit}
-        onPress={() => onSubmit({ title: title.trim(), description: description.trim(), status })}
-        style={[styles.button, !canSubmit && styles.buttonDisabled]}
+        accessibilityState={{ disabled: !canSubmit || isSubmitting }}
+        disabled={!canSubmit || isSubmitting}
+        onPress={() => void submit()}
+        style={[styles.button, (!canSubmit || isSubmitting) && styles.buttonDisabled]}
       >
-        <Text style={styles.buttonText}>{submitLabel}</Text>
+        <Text style={styles.buttonText}>{isSubmitting ? 'Saving...' : submitLabel}</Text>
       </Pressable>
     </ScrollView>
   );
@@ -64,6 +83,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   multiline: { minHeight: 100, textAlignVertical: 'top' },
+  error: { color: '#dc2626', marginTop: 8 },
   button: {
     marginTop: 24,
     backgroundColor: '#2563eb',

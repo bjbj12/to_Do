@@ -5,18 +5,20 @@ import { TodoForm } from '@/components/TodoForm';
 import { useTodos } from '@/todos';
 
 export default function EditTodoScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const { getTodo, updateTodo } = useTodos();
-  const todo = getTodo(id);
+  const todoId = Array.isArray(id) ? id[0] : id;
+  const todo = getTodo(todoId);
 
-  if (!todo) return <Text style={styles.missing}>Todo not found.</Text>;
+  if (!todoId || !todo) return <Text style={styles.missing}>Todo not found.</Text>;
 
   return (
     <TodoForm
+      key={todo.id}
       initial={todo}
       submitLabel="Save changes"
-      onSubmit={(input) => {
-        updateTodo(todo.id, input);
+      onSubmit={async (input) => {
+        await updateTodo(todo.id, input);
         router.back();
       }}
     />

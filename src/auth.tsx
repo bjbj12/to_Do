@@ -1,45 +1,85 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, use, useEffect, useState, type PropsWithChildren } from 'react';
+import type { User } from '@supabase/supabase-js';
 
-// Demo credentials — hardcoded by design.
-export const DEMO_USERNAME = 'admin';
-export const DEMO_PASSWORD = 'password123';
-
-const SESSION_KEY = 'session.user';
+import { supabase } from '../utils/supabase';
 
 type AuthContextValue = {
-  user: string | null;
+  user: User | null;
   isLoading: boolean;
-  signIn: (username: string, password: string) => boolean;
-  signOut: () => void;
+  error: string | null;
+  signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string) => Promise<boolean>;
+  signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: PropsWithChildren) {
-  const [user, setUser] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    AsyncStorage.getItem(SESSION_KEY)
-      .then(setUser)
-      .finally(() => setIsLoading(false));
+    let active = true;
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (active) setUser(session?.user ?? null);
+    });
+
+    supabase.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (error) throw error;
+        if (active) setUser(data.session?.user ?? null);
+      })
+      .catch((error: unknown) => {
+        console.error('Unable to restore the Supabase session:', error);
+        if (active) {
+          setError(
+            error instanceof Error ? error.message : 'Unable to restore the Supabase session.',
+          );
+        }
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const signIn = (username: string, password: string) => {
-    const name = username.trim();
-    if (name !== DEMO_USERNAME || password !== DEMO_PASSWORD) return false;
-    setUser(name);
-    void AsyncStorage.setItem(SESSION_KEY, name);
-    return true;
+  const signIn = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+    if (error) throw error;
+    setError(null);
   };
 
-  const signOut = () => {
-    setUser(null);
-    void AsyncStorage.removeItem(SESSION_KEY);
+  const signUp = async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+    });
+    if (error) throw error;
+    setError(null);
+    return data.session !== null;
   };
 
-  return <AuthContext value={{ user, isLoading, signIn, signOut }}>{children}</AuthContext>;
+  const signOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+  };
+
+  return (
+    <AuthContext value={{ user, isLoading, error, signIn, signUp, signOut }}>
+      {children}
+    </AuthContext>
+  );
 }
 
 export function useAuth() {
