@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View } from 'react-native';
 
 import { AuthProvider, useAuth } from '@/auth';
+import { CompletionCelebration } from '@/components/CompletionCelebration';
 import { TodoProvider, useTodos } from '@/todos';
 
 export default function RootLayout() {
@@ -10,6 +11,7 @@ export default function RootLayout() {
     <AuthProvider>
       <TodoProvider>
         <RootNavigator />
+        <CompletionCelebration />
         <StatusBar style="dark" />
       </TodoProvider>
     </AuthProvider>

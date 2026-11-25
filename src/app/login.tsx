@@ -13,6 +13,7 @@ import { useAuth } from '@/auth';
 
 export default function LoginScreen() {
   const { signIn, signUp, error: sessionError } = useAuth();
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
@@ -28,7 +29,11 @@ export default function LoginScreen() {
 
     try {
       if (isSignUp) {
-        const signedIn = await signUp(email, password);
+        if (!username.trim()) {
+          setError('Username is required.');
+          return;
+        }
+        const signedIn = await signUp(email, password, username);
         if (!signedIn) {
           setMessage('Check your email to confirm your account, then sign in.');
         }
@@ -52,9 +57,29 @@ export default function LoginScreen() {
       <View style={styles.card}>
         <Text style={styles.title}>Todo App</Text>
         <Text style={styles.subtitle}>
-          {isSignUp ? 'Create an account to sync your todos' : 'Sign in to sync your todos'}
+          {isSignUp
+            ? 'Create an account to sync your todos'
+            : 'Sign in to sync your todos'}
         </Text>
 
+        {isSignUp ? (
+          <TextInput
+            value={username}
+            onChangeText={(value) => {
+              setUsername(value);
+              setError(null);
+              setMessage(null);
+            }}
+            placeholder="Username"
+            autoCapitalize="words"
+            autoCorrect={false}
+            autoComplete="nickname"
+            maxLength={60}
+            returnKeyType="next"
+            style={styles.input}
+            testID="username"
+          />
+        ) : null}
         <TextInput
           value={email}
           onChangeText={(value) => {

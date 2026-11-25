@@ -1,6 +1,6 @@
 import { Stack, router } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useAuth } from '@/auth';
 import { StatusBadge, StatusPicker } from '@/components/status';
@@ -8,11 +8,38 @@ import { confirmDestructive, showError } from '@/confirm';
 import { STATUSES, STATUS_LABELS, useTodos, type TodoStatus } from '@/todos';
 
 export default function TodoListScreen() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, updateDisplayName } = useAuth();
   const { todos, error, refreshTodos, updateTodo, deleteTodo } = useTodos();
   const [filter, setFilter] = useState<TodoStatus | null>(null);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [displayNameInput, setDisplayNameInput] = useState('');
+  const [isSavingName, setIsSavingName] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
 
   const visible = filter ? todos.filter((t) => t.status === filter) : todos;
+  const metadataName = user?.user_metadata.display_name ?? user?.user_metadata.name;
+  const displayName =
+    typeof metadataName === 'string' && metadataName.trim()
+      ? metadataName
+      : (user?.email ?? 'there');
+
+  const saveDisplayName = async () => {
+    const name = displayNameInput.trim();
+    if (!name || isSavingName) return;
+
+    setIsSavingName(true);
+    setNameError(null);
+    try {
+      await updateDisplayName(name);
+      setIsEditingName(false);
+    } catch (saveError) {
+      setNameError(
+        saveError instanceof Error ? saveError.message : 'Unable to update your display name.',
+      );
+    } finally {
+      setIsSavingName(false);
+    }
+  };
 
   return (
     <View style={styles.screen}>
@@ -43,7 +70,65 @@ export default function TodoListScreen() {
       ) : null}
 
       <View style={styles.toolbar}>
-        <Text style={styles.greeting}>Hi, {user?.email ?? 'there'}</Text>
+        <View style={styles.greetingRow}>
+          <Text style={styles.greeting}>Hi, {displayName}</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              setDisplayNameInput(displayName === 'there' ? '' : displayName);
+              setNameError(null);
+              setIsEditingName(true);
+            }}
+            hitSlop={8}
+          >
+            <Text style={styles.editName}>Edit name</Text>
+          </Pressable>
+        </View>
+        {isEditingName ? (
+          <View style={styles.nameEditor}>
+            <TextInput
+              accessibilityLabel="Display name"
+              value={displayNameInput}
+              onChangeText={(value) => {
+                setDisplayNameInput(value);
+                setNameError(null);
+              }}
+              placeholder="Display name"
+              autoCapitalize="words"
+              autoCorrect={false}
+              maxLength={60}
+              returnKeyType="done"
+              onSubmitEditing={() => void saveDisplayName()}
+              style={styles.nameInput}
+              editable={!isSavingName}
+            />
+            {nameError ? <Text style={styles.nameError}>{nameError}</Text> : null}
+            <View style={styles.nameActions}>
+              <Pressable
+                accessibilityRole="button"
+                disabled={isSavingName}
+                onPress={() => setIsEditingName(false)}
+              >
+                <Text style={styles.cancelName}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ disabled: isSavingName || !displayNameInput.trim() }}
+                disabled={isSavingName || !displayNameInput.trim()}
+                onPress={() => void saveDisplayName()}
+              >
+                <Text
+                  style={[
+                    styles.saveName,
+                    (isSavingName || !displayNameInput.trim()) && styles.disabledSaveName,
+                  ]}
+                >
+                  {isSavingName ? 'Saving...' : 'Save name'}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
         <StatusPicker
           value={filter}
           onChange={(s) => setFilter((current) => (current === s ? null : s))}
@@ -120,7 +205,22 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   headerAction: { color: '#2563eb', fontWeight: '600', paddingHorizontal: 8 },
   toolbar: { padding: 16, gap: 12 },
+  greetingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   greeting: { fontSize: 18, fontWeight: '700', color: '#0f172a' },
+  editName: { color: '#2563eb', fontWeight: '600', paddingVertical: 4 },
+  nameEditor: { gap: 8 },
+  nameInput: {
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    padding: 10,
+    backgroundColor: '#fff',
+  },
+  nameError: { color: '#dc2626' },
+  nameActions: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', gap: 20 },
+  cancelName: { color: '#475569', fontWeight: '600', paddingVertical: 6 },
+  saveName: { color: '#2563eb', fontWeight: '700', paddingVertical: 6 },
+  disabledSaveName: { opacity: 0.5 },
   list: { paddingHorizontal: 16, paddingBottom: 96, gap: 8 },
   empty: { textAlign: 'center', color: '#64748b', marginTop: 48 },
   errorBanner: {

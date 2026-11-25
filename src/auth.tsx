@@ -8,7 +8,8 @@ type AuthContextValue = {
   isLoading: boolean;
   error: string | null;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<boolean>;
+  signUp: (email: string, password: string, username: string) => Promise<boolean>;
+  updateDisplayName: (displayName: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -60,14 +61,23 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setError(null);
   };
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, username: string) => {
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
+      options: { data: { display_name: username.trim() } },
     });
     if (error) throw error;
     setError(null);
     return data.session !== null;
+  };
+
+  const updateDisplayName = async (displayName: string) => {
+    const { data, error } = await supabase.auth.updateUser({
+      data: { display_name: displayName },
+    });
+    if (error) throw error;
+    setUser(data.user);
   };
 
   const signOut = async () => {
@@ -76,7 +86,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   };
 
   return (
-    <AuthContext value={{ user, isLoading, error, signIn, signUp, signOut }}>
+    <AuthContext value={{ user, isLoading, error, signIn, signUp, updateDisplayName, signOut }}>
       {children}
     </AuthContext>
   );

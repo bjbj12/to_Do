@@ -33,6 +33,7 @@ type TodoContextValue = {
   todos: Todo[];
   isLoading: boolean;
   error: string | null;
+  celebrationId: number;
   refreshTodos: () => Promise<void>;
   getTodo: (id?: string) => Todo | undefined;
   createTodo: (input: TodoInput) => Promise<Todo>;
@@ -84,6 +85,7 @@ export function TodoProvider({ children }: PropsWithChildren) {
     todos: [],
     error: null,
   });
+  const [celebrationId, setCelebrationId] = useState(0);
   const todos = loadState.userId === userId ? loadState.todos : [];
   const error = loadState.userId === userId ? loadState.error : null;
   const isLoading =
@@ -174,6 +176,9 @@ export function TodoProvider({ children }: PropsWithChildren) {
   const updateTodo = async (id: string, patch: Partial<TodoInput>) => {
     if (!user) throw new Error('You must be signed in to update a todo.');
     if (!id) throw new Error('A todo ID is required.');
+    const previousTodo = loadState.userId === user.id
+      ? loadState.todos.find((todo) => todo.id === id)
+      : undefined;
 
     const { data, error: updateError } = await supabase
       .from('todos')
@@ -191,6 +196,9 @@ export function TodoProvider({ children }: PropsWithChildren) {
         ? { ...current, todos: current.todos.map((item) => (item.id === id ? todo : item)) }
         : current,
     );
+    if (patch.status === 'done' && previousTodo?.status !== 'done') {
+        setCelebrationId((current) => current + 1);
+    }
   };
 
   const deleteTodo = async (id: string) => {
@@ -220,6 +228,7 @@ export function TodoProvider({ children }: PropsWithChildren) {
         todos,
         isLoading,
         error,
+        celebrationId,
         refreshTodos,
         getTodo,
         createTodo,

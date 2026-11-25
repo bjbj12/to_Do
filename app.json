@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "todo-expo",
-    "slug": "todo-expo",
+    "slug": "to_do",
     "version": "1.0.0",
     "scheme": "todoexpo",
     "experiments": {
@@ -29,6 +29,17 @@
     "plugins": [
       "expo-router",
       "expo-status-bar"
-    ]
+    ],
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "ae5d7273-713c-4c39-8b96-8ce3294fda1a"
+      }
+    },
+    "owner": "bj_lucas08"
   }
 }
